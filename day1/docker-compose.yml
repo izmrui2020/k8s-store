@@ -1,69 +1,30 @@
-version: "3.8"
+version: '3'
 
 services:
-  db:
-    image: postgres
+  minecraft:
+    image: itzg/minecraft-server:java17
+    container_name: minecraft
+    stdin_open: true
+    tty: true
+    ports:
+      - "25565:25565"
+      - "8123" # Dynmap
     volumes:
-      - type: volume
-        source: db-volume
-        target: /var/lib/postgresql/data
-        volume:
-          nocopy: true
-    # volumes:
-    #   - db-volume:/var/lib/postgresql/data # 上記と等価(短い記法)
-    networks:
-      - backend
+      - "./data:/data"
     environment:
-      POSTGRES_PASSWORD: /run/secrets/db_password
-    secrets:
-      - db_password
-
-  app:
-    build: .
-    command: bash -c "rm -f /tmp/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
+      EULA: "TRUE"
+      MEMORY: "2G"
+      TYPE: "SPIGOT"
+      VERSION: "1.18.1"
+      MODS: "https://github.com/webbukkit/dynmap/releases/download/v3.3-beta-2/Dynmap-3.3-beta-2-spigot.jar"
+    restart: always
+  nginx:
+    image: nginx:mainline
+    container_name: nginx
+    stdin_open: true
+    tty: true
     volumes:
-      - type: tmpfs
-        target: /tmp
-        tmpfs:
-          size: 1000
-      - type: bind
-        source: .
-        target: /myapp
-    # volumes:
-    #   - .:/myapp # 上記と等価
-    networks:
-      - backend
-      - frontend
-    depends_on:
-      - db
-    secrets:
-      - db_password
-
-  web:
-    image: nginx
-    volumes:
-      - type: bind
-        source: ./nginx/conf.d/
-        target: /etc/nginx/conf.d/
-    # volumes:
-    #   - ./nginx/conf.d/:/etc/nginx/conf.d/ # 上記と等価(短い記法)
+      - "./conf.d:/etc/nginx/conf.d"
     ports:
       - "80:80"
-    networks:
-      - frontend
-    depends_on:
-      - app
-
-volumes:
-  db-volume:
-
-
-networks:
-  backend:
-    driver: bridge
-  frontend:
-    driver: bridge
-
-secrets:
-  db_password:
-    file: db_password.txt
+    restart: always
